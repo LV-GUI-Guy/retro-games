@@ -62,6 +62,9 @@
   var saveScoreBtn = $('saveScoreBtn'), nameRow = $('nameRow'), playerName = $('playerName');
   var startPauseBtn = $('startPauseBtn'), stopBtn = $('stopBtn'), muteBtn = $('muteBtn');
   var holdBtn = $('holdBtn');
+  var tHoldBtn = $('tHold');
+  var holdBayMobile = $('holdBayMobile');
+  var overlayScores = $('overlayScores');
   var boardList = $('leaderboard'), boardListMobile = $('leaderboardMobile');
   var clearScoresBtn = $('clearScoresBtn');
 
@@ -430,6 +433,7 @@
 
   function draw() {
     ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+    updateHoldUI();
     var y, x;
     // Locked cells
     for (y = 0; y < ROWS; y++) {
@@ -516,6 +520,24 @@
       nextCtx.restore();
     }
     if (nextMobileCtx && nextMobile) drawMini(nextMobileCtx, nextMobile, nextQueue[0] || null);
+    updateHoldUI();
+  }
+
+  // Hold controls reflect the one-hold-per-piece lock: dimmed/disabled while
+  // locked so touch players can see at a glance whether HOLD will do anything.
+  // Change-checked so the per-frame call from draw() costs nothing.
+  var lastHoldUiKey = null;
+  function updateHoldUI() {
+    var key = state + ':' + (canHold ? '1' : '0');
+    if (key === lastHoldUiKey) return;
+    lastHoldUiKey = key;
+    var enabled = (state === 'playing' && canHold);
+    holdBtn.disabled = !enabled;
+    if (tHoldBtn) tHoldBtn.disabled = !enabled;
+    if (holdBayMobile) {
+      holdBayMobile.classList.toggle('locked', !enabled);
+      holdBayMobile.setAttribute('aria-disabled', String(!enabled));
+    }
   }
 
   function drawMiniInSlot(type, yOff, slotH) {
@@ -556,6 +578,8 @@
     nameRow.classList.add('hidden');
     resumeBtn.classList.add('hidden');
     restartBtn.classList.add('hidden');
+    overlayScores.classList.add('hidden');
+    overlayScores.innerHTML = '';
     startBtn.classList.remove('hidden');
 
     if (mode === null) {
@@ -579,13 +603,26 @@
       nameRow.classList.remove('hidden');
       saveScoreBtn.classList.remove('hidden');
       restartBtn.classList.remove('hidden');
+      renderOverlayScores();
     } else if (mode === 'stopped') {
       overlayTitle.textContent = 'GAME ENDED';
       overlayText.textContent = 'Score ' + score + ' · Level ' + level + ' · Lines ' + lines;
       startBtn.textContent = 'Play again';
       nameRow.classList.remove('hidden');
       saveScoreBtn.classList.remove('hidden');
+      renderOverlayScores();
     }
+  }
+
+  // Top-5 in the end overlay: on iPhone the page doesn't scroll (overflow
+  // hidden), so this is the mobile player's way to see the leaderboard.
+  function renderOverlayScores() {
+    var arr = loadScores().slice(0, 5);
+    if (!arr.length) return;
+    overlayScores.innerHTML = arr.map(function (e, i) {
+      return '<li>#' + (i + 1) + ' ' + escapeHtml(e.name) + ' — ' + e.score + '</li>';
+    }).join('');
+    overlayScores.classList.remove('hidden');
   }
 
   // ---------- Leaderboard ----------
@@ -741,6 +778,7 @@
     addScore(nm, score, level, lines);
     saveScoreBtn.classList.add('hidden');
     nameRow.classList.add('hidden');
+    renderOverlayScores();
     overlayText.textContent += ' — saved!';
   });
   clearScoresBtn.addEventListener('click', function () {
@@ -759,35 +797,69 @@
   bindTap($('tRotate'), function () { rotate(1); });
   bindTap($('tDrop'), function () { hardDrop(); });
   bindTap($('tHold'), function () { holdPiece(); });
+  // The Hold bay itself is a big touch target (easier to discover than the button)
+  if (holdBayMobile) {
+    bindTap(holdBayMobile, function () { holdPiece(); });
+    holdBayMobile.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); holdPiece(); }
+    });
+  }
 
-  // Swipe gestures on the board: horizontal = move, tap = rotate, swipe down = hard drop.
-  // Buttons remain the primary control; swipes are a convenience.
+  // Touch gestures on the board.
+  // Disambiguation rules (tap vs. swipe), all measured from the touch ORIGIN:
+  // - Tap (rotate): lifts within TAP_SLOP px of origin, no drag ever exceeded slop.
+  // - Drag: finger travels -> horizontal steps move the piece, vertical steps soft-drop.
+  // - Flick down (hard drop): fast, mostly-downward motion, decided at touchend by
+  //   total displacement + duration, so it works even when iOS delivers almost no
+  //   touchmove events for a quick flick (the old code rotated the piece instead).
+  // Buttons remain the primary control; gestures are a convenience.
   (function enableSwipe() {
-    var sx = 0, sy = 0, tracking = false;
+    var TAP_SLOP = 14;   // px from origin still counted as "not a swipe"
+    var STEP = 26;       // px of drag per move / soft-drop step
+    var FLICK_MS = 350;  // max duration for a lift to count as a flick
+    var FLICK_DY = 28;   // min downward travel for a flick hard-drop
+    var sx = 0, sy = 0, lastX = 0, lastDownY = 0, t0 = 0;
+    var tracking = false, moved = false;
     boardCanvas.addEventListener('touchstart', function (e) {
       var t = e.changedTouches[0];
-      sx = t.clientX; sy = t.clientY; tracking = true;
+      sx = t.clientX; sy = t.clientY;
+      lastX = sx; lastDownY = sy;
+      t0 = Date.now();
+      tracking = true; moved = false;
     }, { passive: true });
     boardCanvas.addEventListener('touchmove', function (e) {
       if (!tracking || state !== 'playing') return;
       var t = e.changedTouches[0];
-      var dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) > 24) {
-        move(dx > 0 ? 1 : -1, 0);
-        sx = t.clientX; sy = t.clientY;
-      } else if (dy > 40) {
-        hardDrop();
-        tracking = false;
+      var dxT = t.clientX - sx, dyT = t.clientY - sy;
+      if (Math.abs(dxT) > TAP_SLOP || Math.abs(dyT) > TAP_SLOP) moved = true;
+      // Horizontal drag: one cell per STEP px (uses a running cursor so repeats work)
+      while (t.clientX - lastX > STEP) { if (!move(1, 0)) break; lastX += STEP; }
+      while (lastX - t.clientX > STEP) { if (!move(-1, 0)) break; lastX += STEP; }
+      // Vertical drag: soft-drop steps only — dragging never hard-drops by accident
+      while (t.clientY - lastDownY > STEP) {
+        var before = current;
+        softDrop();
+        if (state !== 'playing') { tracking = false; return; }
+        lastDownY += STEP;
+        if (current !== before) { lastX = t.clientX; } // fresh piece: re-anchor
       }
       if (e.cancelable) e.preventDefault();
     }, { passive: false });
-    boardCanvas.addEventListener('touchend', function (e) {
+    function end(e) {
       if (!tracking) return;
       tracking = false;
+      if (state !== 'playing') return;
       var t = e.changedTouches[0];
-      var dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy);
-      if (dx < 10 && dy < 10 && state === 'playing') rotate(1); // tap = rotate
-    });
+      var dxT = t.clientX - sx, dyT = t.clientY - sy;
+      var dt = Date.now() - t0;
+      if (!moved && Math.abs(dxT) < TAP_SLOP && Math.abs(dyT) < TAP_SLOP) {
+        rotate(1); // clean tap
+      } else if (dyT > FLICK_DY && Math.abs(dyT) > Math.abs(dxT) && dt < FLICK_MS) {
+        hardDrop(); // downward flick
+      }
+    }
+    boardCanvas.addEventListener('touchend', end);
+    boardCanvas.addEventListener('touchcancel', function () { tracking = false; });
   })();
 
   // Pause when tab hidden (prevents unfair top-outs)

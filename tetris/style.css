@@ -237,6 +237,31 @@ kbd {
 
 .tbtn.wide { font-size: 15px; letter-spacing: 1px; }
 .tbtn.drop { background: linear-gradient(90deg, #1f9dff, #38e1ff); color: #06121f; border: none; }
+.tbtn:disabled { opacity: 0.35; }
+
+#touchHint {
+  display: none;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 2px 0 0;
+  text-align: center;
+  max-width: 340px;
+}
+
+#holdBayMobile { cursor: pointer; touch-action: manipulation; }
+.mini-bay.locked { opacity: 0.55; }
+
+#overlayScores {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  text-align: left;
+  font-size: 13px;
+  max-height: 110px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#overlayScores.hidden { display: none; }
 
 #foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: auto; }
 
@@ -273,5 +298,6 @@ kbd {
   }
 
   #touchControls { display: block; }
+  #touchHint { display: block; }
   #mobileBoard { display: block; }
 }

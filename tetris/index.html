@@ -55,7 +55,7 @@
       <section id="boardWrap">
         <!-- Mobile mini bays sit above the board so everything fits in 393px width -->
         <div id="mobileBays">
-          <div class="mini-bay">HOLD<canvas id="holdCanvasMobile" width="72" height="48"></canvas></div>
+          <div class="mini-bay" id="holdBayMobile" role="button" tabindex="0" title="Tap to hold / swap the falling piece" aria-label="Hold piece">HOLD<canvas id="holdCanvasMobile" width="72" height="48"></canvas></div>
           <div class="mini-bay">NEXT<canvas id="nextCanvasMobile" width="72" height="48"></canvas></div>
         </div>
         <div id="canvasHolder">
@@ -64,6 +64,7 @@
             <div id="overlayCard">
               <h2 id="overlayTitle">TETRIS</h2>
               <p id="overlayText">Press Start to play</p>
+              <ol id="overlayScores" class="hidden"></ol>
               <div id="nameRow" class="hidden">
                 <label for="playerName">Name:</label>
                 <input id="playerName" maxlength="12" placeholder="YOU" autocomplete="off" />
@@ -95,6 +96,7 @@
             <button class="tbtn wide drop" id="tDrop" type="button">DROP</button>
           </div>
         </div>
+        <p id="touchHint">HOLD button (or tap the Hold box) swaps your piece &bull; Tap board = rotate &bull; Drag = move / soft-drop &bull; Flick down = hard drop</p>
       </section>
 
       <!-- Right column: next + leaderboard -->
