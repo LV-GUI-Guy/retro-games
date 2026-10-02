@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- iPhone 14 Pro: 393 x 852 CSS px. viewport-fit=cover handles Safari notch/Dynamic Island -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Tetris" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; }
+  </style>
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="description" content="Classic Tetris - Safari / Chrome / Firefox compatible, iPhone 14 Pro ready" />
+  <title>Tetris Classic</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <h1>TETRIS</h1>
+      <div id="top-stats">
+        <div class="pill">SCORE <span id="score">0</span></div>
+        <div class="pill">LEVEL <span id="level">1</span></div>
+        <div class="pill">LINES <span id="lines">0</span></div>
+      </div>
+    </header>
+
+    <main id="layout">
+      <!-- Left column: hold + controls help (desktop) -->
+      <aside class="side">
+        <section class="panel" aria-label="Hold bay">
+          <h2>HOLD <span class="key-hint">(C)</span></h2>
+          <canvas id="holdCanvas" width="120" height="80"></canvas>
+          <button id="holdBtn" class="btn small" type="button">Hold</button>
+        </section>
+        <section class="panel desktop-only" aria-label="Controls">
+          <h2>CONTROLS</h2>
+          <ul id="controlsList">
+            <li><kbd>&larr;</kbd><kbd>&rarr;</kbd> move</li>
+            <li><kbd>&darr;</kbd> soft drop</li>
+            <li><kbd>Space</kbd> hard drop</li>
+            <li><kbd>&uarr;</kbd>/<kbd>X</kbd> rotate</li>
+            <li><kbd>Z</kbd> rotate ccw</li>
+            <li><kbd>C</kbd>/<kbd>Shift</kbd> hold</li>
+            <li><kbd>P</kbd> pause</li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- Center: game board -->
+      <section id="boardWrap">
+        <!-- Mobile mini bays sit above the board so everything fits in 393px width -->
+        <div id="mobileBays">
+          <div class="mini-bay">HOLD<canvas id="holdCanvasMobile" width="72" height="48"></canvas></div>
+          <div class="mini-bay">NEXT<canvas id="nextCanvasMobile" width="72" height="48"></canvas></div>
+        </div>
+        <div id="canvasHolder">
+          <canvas id="board" width="300" height="600" aria-label="Tetris play field"></canvas>
+          <div id="overlay" class="hidden">
+            <div id="overlayCard">
+              <h2 id="overlayTitle">TETRIS</h2>
+              <p id="overlayText">Press Start to play</p>
+              <div id="nameRow" class="hidden">
+                <label for="playerName">Name:</label>
+                <input id="playerName" maxlength="12" placeholder="YOU" autocomplete="off" />
+              </div>
+              <div id="overlayBtns">
+                <button id="startBtn" class="btn primary" type="button">Start</button>
+                <button id="resumeBtn" class="btn hidden" type="button">Resume</button>
+                <button id="restartBtn" class="btn hidden" type="button">Restart</button>
+                <button id="saveScoreBtn" class="btn hidden" type="button">Save score</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="gameBtns">
+          <button id="startPauseBtn" class="btn primary" type="button">Start</button>
+          <button id="stopBtn" class="btn danger" type="button" disabled>End</button>
+          <button id="muteBtn" class="btn small" type="button" aria-label="Toggle sound">Sound: Off</button>
+        </div>
+        <!-- Touch controls for iPhone / mobile Safari -->
+        <div id="touchControls" aria-label="Touch controls">
+          <div class="tc-row">
+            <button class="tbtn" id="tLeft" type="button" aria-label="Move left">&#9664;</button>
+            <button class="tbtn" id="tRight" type="button" aria-label="Move right">&#9654;</button>
+            <button class="tbtn" id="tRotate" type="button" aria-label="Rotate">&#8635;</button>
+            <button class="tbtn" id="tDown" type="button" aria-label="Soft drop">&#9660;</button>
+          </div>
+          <div class="tc-row">
+            <button class="tbtn wide" id="tHold" type="button">HOLD</button>
+            <button class="tbtn wide drop" id="tDrop" type="button">DROP</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right column: next + leaderboard -->
+      <aside class="side">
+        <section class="panel" aria-label="Next piece preview">
+          <h2>NEXT</h2>
+          <canvas id="nextCanvas" width="120" height="240"></canvas>
+        </section>
+        <section class="panel" aria-label="Leaderboard">
+          <h2>LEADERBOARD</h2>
+          <ol id="leaderboard"><li class="empty">No scores yet — be the first!</li></ol>
+          <button id="clearScoresBtn" class="btn small" type="button">Clear</button>
+        </section>
+      </aside>
+    </main>
+
+    <!-- Mobile leaderboard collapsible below the game so page fits 852px height with scroll -->
+    <section id="mobileBoard" class="panel">
+      <h2>LEADERBOARD</h2>
+      <ol id="leaderboardMobile"><li class="empty">No scores yet — be the first!</li></ol>
+    </section>
+
+    <footer id="foot">
+      <span>Vanilla HTML/CSS/JS &bull; Safari / Chrome / Firefox &bull; Fits iPhone 14 Pro (393&times;852)</span>
+    </footer>
+  </div>
+  <script src="game.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>
