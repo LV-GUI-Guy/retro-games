@@ -1,7 +1,7 @@
 // Offline cache for Tetris on GitHub Pages.
 // NOTE: style.css is included — every file the game uses must be listed here,
 // otherwise the game "works online, breaks offline".
-var CACHE = 'tetris-v1';
+var CACHE = 'tetris-v2';
 var FILES = ['./', './index.html', './style.css', './game.js', './manifest.json',
   './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', function (e) {
